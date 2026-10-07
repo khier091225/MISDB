@@ -175,3 +175,18 @@ dialog{border:1px solid #e5eeea;border-radius:16px;padding:25px;width:min(550px,
     .module-toolbar input { width: 100%; min-width: 0; }
     .quick-icon { flex-shrink: 0; }
 }
+
+.backup-source { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:20px 22px; background:#fff; border:1px solid var(--border); border-radius:11px; margin-bottom:20px; }
+.backup-source strong { display:block; font-size:14px; color:#284a47; margin-top:8px; overflow-wrap:anywhere; }
+.backup-source p { font-size:13px; color:#415965; margin-top:7px; line-height:1.6; }
+.backup-source .button { flex-shrink:0; }
+.backup-state { padding:40px 25px; text-align:center; }
+.backup-state > svg { margin:0 auto 16px; color:var(--teal); width:30px; height:30px; }
+.backup-state p { font-size:14px; color:#415965; line-height:1.8; margin:12px auto 20px; max-width:620px; }
+.backup-entry { max-width:240px; overflow:hidden; text-overflow:ellipsis; }
+.backup-history-title { font-size:17px; font-weight:600; margin-bottom:14px; }
+.backup-detail-note { font-size:13px; margin-top:18px; margin-bottom:0; }
+.backup-stats .stat-head > span:first-child { min-height:40px; }
+@media(max-width:760px) { .backup-source { flex-direction:column; align-items:flex-start; padding:18px; } .backup-source strong { font-size:13px; } .backup-stats .stat-value { font-size:34px; } }
+
+@media(max-width:760px) { .toast { left:20px; right:20px; transform:none; width:auto; max-width:none; text-align:center; } }

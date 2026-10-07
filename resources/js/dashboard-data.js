@@ -67,6 +67,7 @@ export const forms = [
     { page:'backups', code:'F-MIS-06', title:'Backup monitoring', icon:'database', description:'Monthly backup completion, organized by computer and user.', file:'F-MIS-06 Monthly Back-up Monitoring Sheet(1).xlsx', fields:['Year','Computer code','User','January–December monitoring','Prepared by','Approved by'] },
 ];
 export function monitoringStatus(asset, kind, period) {
-    const completed = period === '2026-09' ? (kind === 'maintenance' ? 46 : 48) : (kind === 'maintenance' ? 36 : 44);
+    if (kind !== 'maintenance') return 'Not connected';
+    const completed = period === '2026-09' ? 46 : 36;
     return asset.id <= completed ? 'Completed' : 'Pending';
 }

@@ -1,8 +1,9 @@
 import { assets, requests, forms, monitoringStatus } from './dashboard-data';
+import { backupWorkbook, loadBackupWorkbook, backupRows, backupSummary, backupPeriods, backupForEquipment } from './backup-workbook';
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
-const state = { page: 'overview', period: '2026-10', status: 'All', search: '', filter: 'All', pageNumber: 1 };
+const state = { page: 'overview', period: '2026-10', status: 'All', search: '', filter: 'All', pageNumber: 1, backupPeriod: null };
 const pageSize = 10;
 const dialog = $('#workspace-dialog');
 const pageDescriptions = {
@@ -13,7 +14,7 @@ const pageDescriptions = {
     history: 'The story of your equipment, one service record at a time.',
     accountability: 'Know what is inside each computer and who it is assigned to.',
     maintenance: 'Keep equipment running smoothly with a consistent monthly routine.',
-    backups: 'A clear view of monthly backup coverage across your departments.',
+    backups: 'Monthly backup records, linked directly to your F-MIS-06 Excel workbook.',
     forms: 'Your familiar Excel forms, organized into one connected workspace.',
 };
 function escape(value) {
@@ -27,7 +28,7 @@ function badge(status) {
     return '<span class="badge badge-' + color + '">' + escape(status) + '</span>';
 }
 function formatDate(date) { return date === '—' ? date : new Intl.DateTimeFormat('en', { month:'short',day:'2-digit',timeZone:'UTC' }).format(new Date(date + 'T00:00:00Z')); }
-function monthName() { return new Intl.DateTimeFormat('en', { month:'long',year:'numeric',timeZone:'UTC' }).format(new Date(state.period + '-01T00:00:00Z')); }
+function monthName(period = state.period) { return new Intl.DateTimeFormat('en', { month:'long',year:'numeric',timeZone:'UTC' }).format(new Date(period + '-01T00:00:00Z')); }
 function periodRequests() { return requests.filter(item => item.date.startsWith(state.period)).sort((a,b) => b.date.localeCompare(a.date)); }
 function completedCount(kind) { return assets.filter(asset => monitoringStatus(asset, kind, state.period) === 'Completed').length; }
 function equipment(code, description = '') {
@@ -39,12 +40,12 @@ function renderOverview() {
     const current = periodRequests();
     const open = current.filter(item => item.status !== 'Resolved').length;
     const pm = completedCount('maintenance');
-    const backup = completedCount('backups');
+    const backup = backupSummary(state.period);
     const stats = [
         {label:'Total equipment',value:assets.length,suffix:'',note:'Across ' + new Set(assets.map(a => a.department)).size + ' departments',icon:'monitor',tint:'teal',page:'inventory',status:'Registered inventory',noteIcon:'check'},
         {label:'Open requests',value:open,suffix:'',note:current.filter(r => r.status === 'In progress').length + ' currently in progress',icon:'message',tint:'amber',page:'complaints',status:'Needs attention',noteIcon:'clock'},
         {label:'Preventive maintenance',value:Math.round(pm / assets.length * 100) + '%',suffix:'',note:pm + ' of ' + assets.length + ' completed',icon:'tool',tint:'blue',page:'maintenance',status:'Monthly coverage',noteIcon:'check'},
-        {label:'Backup completion',value:Math.round(backup / assets.length * 100) + '%',suffix:'',note:backup + ' of ' + assets.length + ' completed',icon:'shield',tint:'purple',page:'backups',status:'Monthly coverage',noteIcon:'check'},
+        {label:'Backup completion',value:backup.available ? backup.percentage + '%' : '—',suffix:'',note:backup.available ? backup.completed + ' of ' + backup.total + ' confirmed · Excel' : backupWorkbook.status === 'loading' ? 'Reading Excel…' : 'Excel data unavailable',icon:'shield',tint:'purple',page:'backups',status:'Excel coverage',noteIcon:'database'},
     ];
     $('#stats-grid').innerHTML = stats.map(s => '<a class="stat-card" href="#' + s.page + '"><div class="stat-head"><span>' + s.label + '</span><span class="stat-icon ' + s.tint + '-tint">' + icon(s.icon) + '</span></div><div class="stat-value">' + s.value + '</div><div class="stat-note"><span class="' + (s.tint === 'amber' ? 'pending' : 'positive') + '">' + icon(s.noteIcon) + '</span>' + s.note + '</div></a>').join('');
     $('#open-count').textContent = open;
@@ -59,7 +60,14 @@ function renderOverview() {
     $('#health-donut').style.background = 'conic-gradient(#148976 0 ' + healthyPercent + '%,#efc573 ' + healthyPercent + '% ' + ((operational + repair) / assets.length * 100) + '%,#9cb9d6 0 100%)';
     $('#health-donut').setAttribute('aria-label', operational + ' of ' + assets.length + ' equipment operational');
     $('#health-legend').innerHTML = [['Operational',operational,'teal'],['Under repair',repair,'amber'],['Maintenance',assets.length - operational - repair,'blue']].map(([label,count,color]) => '<div><i class="legend-dot ' + color + '"></i><span>' + label + '</span><strong>' + count + '</strong></div>').join('');
-    $('#monitoring-summary').innerHTML = [['maintenance','Preventive maintenance','F-MIS-05','tool',pm,'teal'],['backups','Monthly backup','F-MIS-06','database',backup,'blue']].map(([page,title,code,name,count,tint]) => '<a class="monitoring-item" href="#' + page + '"><div class="monitoring-title"><span class="' + tint + '-tint">' + icon(name) + '</span><div><strong>' + title + '</strong><small>' + code + ' · ' + monthName() + '</small></div>' + icon('chevron-right') + '</div><div class="progress-label"><span>' + count + ' of ' + assets.length + ' computers</span><strong>' + Math.round(count / assets.length * 100) + '%</strong></div><div class="progress-track ' + (tint === 'blue' ? 'blue' : '') + '" role="progressbar" aria-label="' + title + '" aria-valuemin="0" aria-valuemax="' + assets.length + '" aria-valuenow="' + count + '"><span style="width:' + count / assets.length * 100 + '%"></span></div><div class="monitoring-note">' + (assets.length - count) + ' remaining this month</div></a>').join('');
+    const checklist = [
+        { page:'maintenance', title:'Preventive maintenance', code:'F-MIS-05', icon:'tool', count:pm, total:assets.length, tint:'teal', note:(assets.length-pm)+' remaining this month · Sample' },
+        { page:'backups', title:'Monthly backup', code:'F-MIS-06', icon:'database', count:backup.completed, total:backup.total, tint:'blue', note:backup.available ? backup.notRecorded+' not recorded · Excel' + (backup.recorded ? ' · '+backup.recorded+' entries to review' : '') : backupWorkbook.status==='loading' ? 'Reading the Excel workbook…' : 'Excel unavailable · Open to retry' },
+    ];
+    $('#monitoring-summary').innerHTML = checklist.map(item => {
+        const percent = item.total ? Math.round(item.count/item.total*100) : 0;
+        return '<a class="monitoring-item" href="#'+item.page+'"><div class="monitoring-title"><span class="'+item.tint+'-tint">'+icon(item.icon)+'</span><div><strong>'+item.title+'</strong><small>'+item.code+' · '+monthName()+'</small></div>'+icon('chevron-right')+'</div><div class="progress-label"><span>'+item.count+' of '+item.total+' computers'+(item.page==='backups'?' confirmed':'')+'</span><strong>'+percent+'%</strong></div><div class="progress-track '+(item.tint==='blue'?'blue':'')+'" role="progressbar" aria-label="'+item.title+'" aria-valuemin="0" aria-valuemax="'+(item.total||1)+'" aria-valuenow="'+item.count+'"><span style="width:'+percent+'%"></span></div><div class="monitoring-note">'+item.note+'</div></a>';
+    }).join('');
     renderRecent();
 }
 function renderChart() {
@@ -81,15 +89,18 @@ function renderRecent() {
 }
 function currentRows() {
     let rows;
-    if (['complaints','repairs','history'].includes(state.page)) {
+    if (state.page === 'backups') {
+        rows = backupRows(state.backupPeriod);
+    } else if (['complaints','repairs','history'].includes(state.page)) {
         rows = periodRequests();
         if (state.page === 'history') rows = rows.filter(r => r.status === 'Resolved');
     } else {
         rows = assets.map(a => ({ ...a, status:['maintenance','backups'].includes(state.page) ? monitoringStatus(a,state.page,state.period) : a.status }));
     }
-    return rows.filter(row => (state.filter === 'All' || row.status === state.filter) && Object.values(row).join(' ').toLowerCase().includes(state.search.toLowerCase().trim()));
+    return rows.filter(row => (state.filter === 'All' || row.status === state.filter) && [...Object.values(row), row.entry?.display ?? ''].join(' ').toLowerCase().includes(state.search.toLowerCase().trim()));
 }
 function renderModule() {
+    if (state.page === 'backups') { renderBackupModule(); return; }
     if (state.page === 'forms') {
         $('#module-content').innerHTML = '<div class="module-intro">' + icon('folder') + '<span>Built around the seven Excel workbooks in your forms folder. Explore each form’s fields and its dashboard module.</span></div><div class="form-library">' + forms.map((form,index) => '<article class="panel form-card"><span class="quick-icon ' + ['teal','blue','purple'][index%3] + '-tint">' + icon(form.icon) + '</span><span class="form-code">' + form.code + ' · ' + (form.file.endsWith('.xls') ? 'XLS' : 'XLSX') + '</span><h2>' + form.title + '</h2><p>' + form.description + '</p><button class="text-link" data-form="' + form.page + '">Explore form ' + icon('arrow-right') + '</button></article>').join('') + '</div>';
         return;
@@ -102,6 +113,7 @@ function renderModule() {
     renderModuleRows();
 }
 function renderModuleRows() {
+    if (state.page === 'backups') { renderBackupRows(); return; }
     const rows = currentRows();
     const totalPages = Math.max(1,Math.ceil(rows.length / pageSize));
     state.pageNumber = Math.min(state.pageNumber,totalPages);
@@ -136,6 +148,7 @@ function navigate(reset = true) {
     $('#module-content').hidden = state.page === 'overview';
     $$('[data-page]').forEach(link => { const active = link.dataset.page === state.page;link.classList.toggle('active',active);if(active)link.setAttribute('aria-current','page');else link.removeAttribute('aria-current'); });
     document.title = 'MISDB · ' + title;
+    configureBackupControls();
     renderOverview();
     if(state.page !== 'overview') renderModule();
     if(dialog.open) dialog.close();
@@ -146,6 +159,7 @@ function showDialog(title,content) {
     if(!dialog.open) dialog.showModal();
 }
 function showDetails(type,id) {
+    if (type === 'backup') { showBackupDetails(id); return; }
     if(type === 'request') {
         const row = requests.find(r => r.id === id);
         if(!row) return;
@@ -154,7 +168,7 @@ function showDetails(type,id) {
         const asset = assets.find(a => a.code === id);
         if(!asset) return;
         const monitoring = ['maintenance','backups'].includes(state.page);
-        showDialog(asset.code,'<p class="dialog-description">Computer inventory · F-MIS-04</p>' + badge(monitoring ? monitoringStatus(asset,state.page,state.period) : asset.status) + '<dl class="detail-grid">' + details({Department:asset.department,Custodian:asset.custodian,Brand:asset.brand,Type:asset.type,Processor:asset.processor,Memory:asset.memory,Storage:asset.storage,'Operating system':'Windows 11 Pro','Preventive maintenance':monitoringStatus(asset,'maintenance',state.period),'Monthly backup':monitoringStatus(asset,'backups',state.period)}) + '</dl><p class="preview-note">Illustrative equipment specifications and assignments. Monitoring period: ' + monthName() + '.</p>');
+        showDialog(asset.code,'<p class="dialog-description">Computer inventory · F-MIS-04</p>' + badge(monitoring ? monitoringStatus(asset,state.page,state.period) : asset.status) + '<dl class="detail-grid">' + details({Department:asset.department,Custodian:asset.custodian,Brand:asset.brand,Type:asset.type,Processor:asset.processor,Memory:asset.memory,Storage:asset.storage,'Operating system':'Windows 11 Pro','Preventive maintenance':monitoringStatus(asset,'maintenance',state.period),'Monthly backup':(backupForEquipment(asset.code,state.period)?.status ?? 'Not listed in Excel')}) + '</dl><p class="preview-note">Illustrative equipment specifications and assignments. Monitoring period: ' + monthName() + '.</p>');
     }
 }
 function details(values) { return Object.entries(values).map(([label,value]) => '<div><dt>' + escape(label) + '</dt><dd>' + escape(value) + '</dd></div>').join(''); }
@@ -162,12 +176,15 @@ function newRequest() {
     showDialog('Create a service request','<p class="dialog-description">Log an equipment concern using the fields from F-MIS-03.</p><form id="request-form"><div class="fields-grid"><label class="field field-full">Computer / equipment<select name="code" required><option value="">Select equipment</option>' + assets.map(a => '<option value="' + a.code + '">' + a.code + ' · ' + a.department + '</option>').join('') + '</select></label><label class="field">Requested by<input name="requestedBy" required maxlength="80" placeholder="Your name" autocomplete="name"></label><label class="field">Priority<select name="priority"><option>Normal</option><option>High</option></select></label><label class="field">Date requested<input name="date" type="date" min="' + state.period + '-01" max="' + state.period + (state.period === '2026-10' ? '-31' : '-30') + '" value="' + state.period + (state.period === '2026-10' ? '-07' : '-30') + '" required></label><label class="field">Department<input name="department" readonly placeholder="From equipment"></label><label class="field field-full">Complaint<textarea name="issue" required minlength="5" maxlength="500" placeholder="Describe the problem with this equipment…"></textarea></label></div><p class="preview-note">Preview only. This request is kept in this tab until you reload the page; nothing is submitted to a database.</p><div class="dialog-actions"><button type="button" class="button button-secondary" data-action="close-dialog">Cancel</button><button type="submit" class="button button-primary">' + icon('plus') + 'Add preview request</button></div></form>');
 }
 function exportReport() {
+    const excel = state.page === 'backups';
     const scope = state.page === 'overview' ? 'Service requests' : state.page === 'forms' ? 'Forms catalog' : forms.find(f => f.page === state.page).title;
-    showDialog('Export report','<p class="dialog-description">Download ' + escape(scope.toLowerCase()) + ' as a CSV file, ready to open in Excel.</p><dl class="detail-grid">' + details({Report:scope,Period:['inventory','accountability','forms'].includes(state.page) ? 'All equipment / forms' : monthName(),Filters:state.page === 'overview' || state.page === 'forms' ? 'All records' : (state.filter + (state.search ? ' · ' + state.search : '')),'Data source':'UI sample records'}) + '</dl><p class="preview-note">The export contains sample data, not a live database report.</p><div class="dialog-actions"><button class="button button-secondary" data-action="close-dialog">Cancel</button><button class="button button-primary" data-action="download-csv">' + icon('download') + 'Download CSV</button></div>');
+    if (excel && !backupSummary(state.backupPeriod).available) { toast('Load the Excel records before exporting.'); return; }
+    showDialog('Export report','<p class="dialog-description">Download '+escape(scope.toLowerCase())+' as a CSV file, ready to open in Excel.</p><dl class="detail-grid">'+details({Report:scope,Period:['inventory','accountability','forms'].includes(state.page)?'All equipment / forms':monthName(excel?state.backupPeriod:state.period),Filters:state.page==='overview'||state.page==='forms'?'All records':state.filter+(state.search?' · '+state.search:''),'Data source':excel?backupWorkbook.data.source.file:'UI sample records'})+'</dl>'+(excel?'<p class="dialog-description">The export includes computer codes, assigned users, original Excel entries, status, and source cell references.</p>':'<p class="preview-note">The export contains sample data, not a live database report.</p>')+'<div class="dialog-actions"><button class="button button-secondary" data-action="close-dialog">Cancel</button><button class="button button-primary" data-action="download-csv">'+icon('download')+'Download CSV</button></div>');
 }
 function downloadCsv() {
     let rows;
-    if(state.page === 'forms') rows=forms.map(f => ({Code:f.code,Form:f.title,Workbook:f.file,Fields:f.fields.join('; ')}));
+    if(state.page === 'backups') rows=currentRows().map(row=>({Equipment:row.code,User:row.user,Period:row.period,'Excel entry':row.entry.display,Status:row.status,Sheet:row.sheet,Cell:row.entry.cell}));
+    else if(state.page === 'forms') rows=forms.map(f => ({Code:f.code,Form:f.title,Workbook:f.file,Fields:f.fields.join('; ')}));
     else if(state.page === 'overview' || ['complaints','repairs','history'].includes(state.page)) rows=(state.page === 'overview' ? periodRequests() : currentRows()).map(r => ({Request:r.id,Equipment:r.code,Department:r.department,Complaint:r.issue,Status:r.status,Priority:r.priority,Reported:r.date,'Requested by':r.requestedBy,'Action taken':r.action}));
     else rows=currentRows().map(r => ({Equipment:r.code,Department:r.department,Custodian:r.custodian,Brand:r.brand,Status:r.status,Period:['maintenance','backups'].includes(state.page) ? monthName() : 'Inventory snapshot',Memory:r.memory,Storage:r.storage}));
     if(!rows.length){toast('No matching records to export.');return;}
@@ -175,9 +192,9 @@ function downloadCsv() {
     const cell = value => '"' + (/^[=+@\-\t\r]/.test(String(value)) ? "'" : '') + String(value).replaceAll('"','""') + '"';
     const csv = '\uFEFF' + [Object.keys(rows[0]),...rows.map(Object.values)].map(row => row.map(cell).join(',')).join('\r\n');
     const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
-    const link=document.createElement('a');link.href=url;link.download='MISDB-sample-' + state.page + '-' + state.period + '.csv';link.click();
+    const link=document.createElement('a');link.href=url;link.download='MISDB-'+(state.page==='backups'?'excel-':'sample-')+state.page+'-'+(state.page==='backups'?state.backupPeriod:state.period)+'.csv';link.click();
     setTimeout(()=>URL.revokeObjectURL(url),1000);
-    dialog.close();toast('Sample report downloaded.');
+    dialog.close();toast(state.page==='backups'?'Excel backup report downloaded.':'Sample report downloaded.');
 }
 let toastTimeout;
 function toast(message) { $('#toast').textContent=message;$('#toast').hidden=false;clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>$('#toast').hidden=true,4500); }
@@ -209,11 +226,12 @@ document.addEventListener('click',event => {
     if(action==='close-dialog')dialog.close();
     if(action==='new-request')newRequest();
     if(action==='export')exportReport();
+    if(action==='refresh-backups')refreshBackups(true);
     if(action==='download-csv')downloadCsv();
     if(action==='previous-page'){state.pageNumber--;renderModuleRows();}
     if(action==='next-page'){state.pageNumber++;renderModuleRows();}
     if(action==='profile')showDialog('MIS Administrator','<p class="dialog-description">LCMI · Management Information System</p><dl class="detail-grid">'+details({Workspace:'Laguna Carparts Manufacturing Inc.',Mode:'Frontend design preview',Role:'Sample administrator',Storage:'Temporary in this browser tab'})+'</dl><p class="preview-note">User accounts and permissions will be connected during backend implementation.</p>');
-    if(action==='notifications')showDialog('Your monthly reminders','<p class="dialog-description">'+monthName()+' · Sample workspace</p>'+[['complaints',periodRequests().filter(r=>r.status!=='Resolved').length+' open service requests','Review pending concerns and ongoing repairs.','message'],['maintenance',(assets.length-completedCount('maintenance'))+' computers awaiting maintenance','Complete your preventive maintenance checklist.','tool'],['backups',(assets.length-completedCount('backups'))+' backups remaining','Review monthly backup coverage.','database']].map(([page,title,description,name])=>'<a href="#'+page+'" class="notification-item">'+icon(name)+'<span><strong>'+title+'</strong><small>'+description+'</small></span>'+icon('chevron-right')+'</a>').join(''));
+    if(action==='notifications')showDialog('Your monthly reminders','<p class="dialog-description">'+monthName()+' · Service samples / Excel backups</p>'+[['complaints',periodRequests().filter(r=>r.status!=='Resolved').length+' open service requests','Review pending concerns and ongoing repairs.','message'],['maintenance',(assets.length-completedCount('maintenance'))+' computers awaiting maintenance','Complete your preventive maintenance checklist.','tool'],['backups',backupSummary(state.period).notRecorded+' backups not recorded','Review saved entries in the Excel workbook.','database']].map(([page,title,description,name])=>'<a href="#'+page+'" class="notification-item">'+icon(name)+'<span><strong>'+title+'</strong><small>'+description+'</small></span>'+icon('chevron-right')+'</a>').join(''));
     if(action==='help')showDialog('Welcome to your workspace','<p class="dialog-description">MISDB brings your seven Excel-based workflows into one place.</p><div class="detail-block"><p><strong>Find equipment.</strong> Use the search box or Computer inventory to locate a computer, department, or custodian.</p><p class="mt-4"><strong>Follow up on concerns.</strong> Open a service request to see its complaint, priority, and action taken.</p><p class="mt-4"><strong>Keep a monthly routine.</strong> Switch reporting months to review maintenance and backup completion.</p></div><p class="preview-note">All figures are sample data for design review. New preview requests reset when you reload.</p>');
 });
 document.addEventListener('input',event=>{
@@ -225,7 +243,7 @@ document.addEventListener('input',event=>{
 });
 document.addEventListener('change',event=>{
     if(event.target.id==='module-filter'){state.filter=event.target.value;state.pageNumber=1;renderModuleRows();}
-    if(event.target.id==='period'){state.period=event.target.value;state.pageNumber=1;renderOverview();if(state.page!=='overview')renderModule();}
+    if(event.target.id==='period'){if(state.page==='backups')state.backupPeriod=event.target.value;else state.period=event.target.value;state.pageNumber=1;renderOverview();if(state.page!=='overview')renderModule();}
     if(event.target.matches('#request-form [name="code"]'))$('#request-form [name="department"]').value=assets.find(a=>a.code===event.target.value)?.department ?? '';
 });
 document.addEventListener('submit',event=>{
@@ -253,3 +271,63 @@ document.addEventListener('keydown',event=>{
 matchMedia('(max-width:760px)').addEventListener('change',()=>toggleSidebar(false));
 window.addEventListener('hashchange',()=>{navigate();$('#main-content').focus();});
 navigate();
+
+function configureBackupControls() {
+    const excel = state.page === 'backups';
+    const periods = excel ? backupPeriods() : ['2026-10','2026-09'];
+    const selected = excel ? state.backupPeriod : state.period;
+    $('#period').innerHTML = periods.length ? periods.map(period=>'<option value="'+period+'"'+(period===selected?' selected':'')+'>'+monthName(period)+'</option>').join('') : '<option>Loading Excel…</option>';
+    $('#period').disabled = excel && backupWorkbook.status !== 'ready';
+    $('.heading-actions [data-action="new-request"]').hidden = excel;
+    $('.heading-actions [data-action="export"]').disabled = excel && !backupSummary(state.backupPeriod ?? '').available;
+    $('.preview-indicator').innerHTML = '<span></span>' + (excel ? 'Excel source' : 'Design preview');
+    $('.main-footer > span:last-child').textContent = excel ? 'F-MIS-06 · Excel records · Save the file, then refresh' : state.page==='overview' ? 'Backups: Excel data · Other modules: sample data' : 'UI preview · Sample records';
+    if(excel) $('#context-label').textContent = 'Excel source';
+}
+async function refreshBackups(showFeedback = false) {
+    if (backupWorkbook.status === 'loading' && refreshBackups.running) return;
+    refreshBackups.running = true;
+    const pending = loadBackupWorkbook(document.body.dataset.backupUrl);
+    renderOverview();
+    if(state.page === 'backups') { configureBackupControls(); renderBackupModule(); }
+    await pending;
+    refreshBackups.running = false;
+    const periods = backupPeriods();
+    if(backupWorkbook.status==='ready' && (!state.backupPeriod || !periods.includes(state.backupPeriod))) state.backupPeriod = backupWorkbook.data.default_period;
+    renderOverview();
+    if(state.page === 'backups') { configureBackupControls(); renderBackupModule(); }
+    if(showFeedback) toast(backupWorkbook.status==='ready'?'Backup records refreshed from Excel.':backupWorkbook.error);
+}
+function renderBackupModule() {
+    const container = $('#module-content');
+    if(backupWorkbook.status !== 'ready') {
+        const loading = backupWorkbook.status==='loading';
+        container.innerHTML = '<div class="panel backup-state" role="status">'+icon(loading?'database':'info')+'<h2>'+(loading?'Reading backup records…':'Excel file unavailable')+'</h2><p>'+escape(loading?'Loading computer codes, users, and monthly entries from F-MIS-06.':backupWorkbook.error)+'</p>'+(loading?'':'<button class="button button-secondary" data-action="refresh-backups">'+icon('history')+'Retry reading Excel</button>')+'</div>';
+        return;
+    }
+    const summary = backupSummary(state.backupPeriod);
+    const source = backupWorkbook.data.source;
+    const checked = new Intl.DateTimeFormat('en',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Manila'}).format(new Date(source.checked_at));
+    const cards = [['Computers in Excel',summary.total,'monitor','teal'],['Confirmed backups',summary.completed,'shield','blue'],['Not recorded',summary.notRecorded,'calendar','amber'],['Other entries',summary.recorded+summary.pending,'file','purple']];
+    container.innerHTML = '<div class="backup-source"><div><span class="eyebrow">CONNECTED EXCEL WORKBOOK</span><strong>'+escape(source.file)+'</strong><p>Sheet '+escape(state.backupPeriod.slice(0,4))+' · Last read '+escape(checked)+' PHT</p></div><button class="button button-secondary" data-action="refresh-backups">'+icon('history')+'Refresh Excel</button></div><div class="stats-grid backup-stats">'+cards.map(([label,value,name,tint])=>'<div class="stat-card"><div class="stat-head"><span>'+label+'</span><span class="stat-icon '+tint+'-tint">'+icon(name)+'</span></div><div class="stat-value">'+value+'</div></div>').join('')+'</div><div class="module-intro">'+icon('info')+'<span><strong>'+monthName(state.backupPeriod)+'</strong> · Blank cells appear as <strong>Not recorded</strong>. Checkmarks and backup dates confirm completion; other entries are shown as written.</span></div><div class="panel"><div class="module-toolbar"><label>'+icon('search')+'<input id="module-search" type="search" aria-label="Search backup records" placeholder="Search computer code or assigned user…" value="'+escape(state.search)+'"></label><label><span class="sr-only">Filter backup status</span><select id="module-filter">'+['All','Completed','Not recorded','Recorded','Pending'].map(option=>'<option'+(option===state.filter?' selected':'')+'>'+option+'</option>').join('')+'</select></label></div><div class="table-scroll"><table class="data-table module-table backup-table"><caption class="sr-only">Backup records from the Excel workbook for '+monthName(state.backupPeriod)+'</caption><thead id="module-head"><tr><th>#</th><th>Computer code</th><th>Assigned user</th><th>Excel entry</th><th>Status</th><th><span class="sr-only">Details</span></th></tr></thead><tbody id="module-rows"></tbody></table></div><div class="table-footer"><span id="module-summary"></span><div class="pagination"><button data-action="previous-page" aria-label="Previous page">Previous</button><span id="page-number"></span><button data-action="next-page" aria-label="Next page">Next</button></div></div></div>';
+    renderBackupRows();
+}
+function renderBackupRows() {
+    if(backupWorkbook.status!=='ready' || !$('#module-rows'))return;
+    const rows=currentRows();
+    const pages=Math.max(1,Math.ceil(rows.length/pageSize));
+    state.pageNumber=Math.min(state.pageNumber,pages);
+    $('#module-rows').innerHTML=rows.slice((state.pageNumber-1)*pageSize,state.pageNumber*pageSize).map(row=>'<tr><td>'+escape(row.number)+'</td><td>'+equipment(row.code,'Sheet '+row.sheet+' · '+row.entry.cell)+'</td><td>'+escape(row.user||'Not specified')+'</td><td class="backup-entry">'+escape(row.entry.display||'—')+'</td><td>'+badge(row.status)+'</td><td>'+detailButton('backup',row.id)+'</td></tr>').join('')||emptyRow(6);
+    $('#module-summary').textContent=rows.length?'Showing '+((state.pageNumber-1)*pageSize+1)+'–'+Math.min(state.pageNumber*pageSize,rows.length)+' of '+rows.length+' Excel records':'0 matching Excel records';
+    $('#page-number').textContent=state.pageNumber+' / '+pages;
+    $('[data-action="previous-page"]').disabled=state.pageNumber===1;
+    $('[data-action="next-page"]').disabled=state.pageNumber===pages;
+}
+function showBackupDetails(id) {
+    const record=backupWorkbook.data?.records.find(row=>row.id===id);
+    if(!record)return;
+    const entry=record.months[state.backupPeriod];
+    const history=Object.entries(record.months).map(([period,value])=>'<tr><td>'+monthName(period)+'</td><td>'+escape(value.display||'—')+'</td><td>'+badge(value.status)+'</td></tr>').join('');
+    showDialog(record.code+' · Backup record','<p class="dialog-description">F-MIS-06 · '+monthName(state.backupPeriod)+'</p>'+badge(entry.status)+'<dl class="detail-grid">'+details({'Assigned user':record.user||'Not specified','Computer code':record.code,'Source sheet':record.sheet,'Source cell':entry.cell,'Excel entry':entry.display||'Blank / not recorded','Last read':new Intl.DateTimeFormat('en',{dateStyle:'medium',timeStyle:'short',timeZone:'Asia/Manila'}).format(new Date(backupWorkbook.data.source.checked_at))+' PHT'})+'</dl><h3 class="backup-history-title">Monthly entries · '+record.year+'</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Month</th><th>Excel entry</th><th>Status</th></tr></thead><tbody>'+history+'</tbody></table></div><p class="dialog-description backup-detail-note">Edit and save the Excel workbook, then use Refresh Excel to load the latest entries.</p>');
+}
+refreshBackups();

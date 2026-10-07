@@ -10,7 +10,7 @@
     @fonts
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body>
+<body data-backup-url="{{ route('backup-monitoring.index') }}">
     @include('partials.icons')
     <a class="skip-link" href="#main-content">Skip to content</a>
     <button class="sidebar-scrim" aria-label="Close navigation" hidden></button>
