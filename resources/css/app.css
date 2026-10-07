@@ -32,7 +32,7 @@ dialog{border:1px solid #e5eeea;border-radius:16px;padding:25px;width:min(550px,
 .workspace-dot { width: 7px; height: 7px; }
 .eyebrow, .nav-label { font-size: 12px; color: #405a55; font-weight: 600; }
 .nav-label { letter-spacing: 1px; }
-.nav-item { font-size: 15px; color: #344f59; font-weight: 500; min-height: 46px; white-space: normal; line-height: 1.4; }
+.nav-item { font-size: 14px; color: #344f59; font-weight: 500; min-height: 46px; white-space: normal; line-height: 1.4; }
 .nav-item svg { width: 20px; height: 20px; }
 .nav-item.active { color: #065f54; font-weight: 600; }
 .nav-count { font-size: 12px; min-width: 23px; height: 23px; color: #7d5316; }
@@ -45,27 +45,27 @@ dialog{border:1px solid #e5eeea;border-radius:16px;padding:25px;width:min(550px,
 .global-search input::placeholder { color: #526874; opacity: 1; }
 .preview-indicator { font-size: 12px; color: #36584b; }
 .page-heading h1 { font-size: 36px; font-weight: 600; }
-.page-heading p { font-size: 16px; line-height: 1.65; }
+.page-heading p { font-size: 14px; line-height: 1.65; }
 .button { font-size: 14px; font-weight: 600; min-height: 44px; padding: 11px 16px; }
 .button-secondary { color: #344f59; border-color: #cbd8d9; }
 .context-bar, .period-picker select { font-size: 14px; }
 .context-bar strong { color: #29474b; font-weight: 600; }
 .period-picker { padding: 9px 12px; border-color: #cbd8d9; }
 .stat-card { padding: 21px; }
-.stat-head { font-size: 16px; font-weight: 500; align-items: flex-start; }
+.stat-head { font-size: 14px; font-weight: 500; align-items: flex-start; }
 .stat-head > span:first-child { min-height: 44px; line-height: 1.4; }
 .stat-icon { width: 36px; height: 36px; }
 .stat-icon svg { width: 20px; height: 20px; }
 .stat-value { font-size: 44px; font-weight: 600; }
-.stat-note { font-size: 14px; line-height: 1.6; align-items: flex-start; }
+.stat-note { font-size: 13px; line-height: 1.6; align-items: flex-start; }
 .stat-note svg { width: 15px; height: 15px; margin-top: 3px; }
-.panel h2, .section-heading h2 { font-size: 18px; font-weight: 600; }
-.panel-heading p { font-size: 14px; line-height: 1.6; }
+.panel h2, .section-heading h2 { font-size: 17px; font-weight: 600; }
+.panel-heading p { font-size: 13px; line-height: 1.6; }
 .subtle-tag { font-size: 13px; color: #435963; border-color: #d7e0e1; }
 .chart-summary { flex-wrap: wrap; row-gap: 8px; align-items: center; }
 .chart-summary > strong { font-size: 32px; }
-.chart-summary > span, .chart-summary .chart-legend { font-size: 14px; }
-.bar-group > span, .chart-grid span, .bar-tooltip { font-size: 13px; }
+.chart-summary > span, .chart-summary .chart-legend { font-size: 13px; }
+.bar-group > span, .chart-grid span, .bar-tooltip { font-size: 12px; }
 .activity-chart { height: 200px; margin-top: 22px; }
 .chart-grid { left: 30px; }
 .bar-groups { left: 34px; }
@@ -78,10 +78,10 @@ dialog{border:1px solid #e5eeea;border-radius:16px;padding:25px;width:min(550px,
 .panel-footer-link, .text-link { color: #066657; }
 .small-count, .table-tab > span { font-size: 12px; color: #435861; }
 .table-tab { padding-bottom: 14px; color: #415b67; }
-.data-table th, .module-table th { font-size: 14px; font-weight: 600; color: #324b55; background: #f2f5f7; padding-block: 14px; }
-.data-table td, .module-table td { font-size: 15px; padding-top: 17px; padding-bottom: 17px; }
-.equipment-cell strong, .module-table .equipment-cell strong { font-size: 15px; font-weight: 600; color: #243f4b; }
-.equipment-cell small, .module-table .equipment-cell small { font-size: 14px; max-width: 215px; }
+.data-table th, .module-table th { font-size: 13px; font-weight: 600; color: #324b55; background: #f2f5f7; padding-block: 14px; }
+.data-table td, .module-table td { font-size: 14px; padding-top: 17px; padding-bottom: 17px; }
+.equipment-cell strong, .module-table .equipment-cell strong { font-size: 14px; font-weight: 600; color: #243f4b; }
+.equipment-cell small, .module-table .equipment-cell small { font-size: 13px; max-width: 215px; }
 .equipment-icon { width: 34px; height: 36px; color: #476574; }
 .equipment-icon svg { width: 18px; height: 18px; }
 .badge, .module-table .badge { font-size: 13px; font-weight: 500; padding: 5px 8px; }
@@ -91,30 +91,30 @@ dialog{border:1px solid #e5eeea;border-radius:16px;padding:25px;width:min(550px,
 .badge-gray { color: #435b65; background: #edf1f4; }
 .table-footer { font-size: 13px; line-height: 1.6; }
 .requests-table { min-width: 650px; }
-.monitoring-title strong { font-size: 16px; font-weight: 600; }
+.monitoring-title strong { font-size: 14px; font-weight: 600; }
 .monitoring-title small, .progress-label, .progress-label strong,
-.monitoring-note, .reminder { font-size: 14px; line-height: 1.6; }
+.monitoring-note, .reminder { font-size: 13px; line-height: 1.6; }
 .progress-label strong { color: #27664d; }
 .progress-track { height: 7px; }
 .monitoring-title > span { width: 36px; height: 38px; }
-.quick-card strong { font-size: 16px; font-weight: 600; }
-.quick-card small { font-size: 14px; line-height: 1.5; }
+.quick-card strong { font-size: 14px; font-weight: 600; }
+.quick-card small { font-size: 13px; line-height: 1.5; }
 .quick-card { padding: 20px; }
 .main-footer, .footer-logo { font-size: 13px; line-height: 1.6; }
-.module-toolbar input, .module-toolbar select, .module-intro { font-size: 15px; }
+.module-toolbar input, .module-toolbar select, .module-intro { font-size: 14px; }
 .module-toolbar input { width: 290px; max-width: 100%; }
 .module-toolbar input::placeholder, .field input::placeholder,
 .field textarea::placeholder { color: #526b74; opacity: 1; }
-.form-card h2 { font-size: 18px; }
-.form-card p { font-size: 15px; }
+.form-card h2 { font-size: 17px; }
+.form-card p { font-size: 14px; }
 .form-card .form-code { font-size: 13px; color: #456159; }
 .pagination button, .field, .detail-grid dt, .detail-block h3 { font-size: 14px; color: #36544e; }
 .field input, .field select, .field textarea,
-.dialog-description, .detail-grid dd, .detail-block { font-size: 16px; }
-.preview-note, .notification-item small { font-size: 14px; }
+.dialog-description, .detail-grid dd, .detail-block { font-size: 14px; }
+.preview-note, .notification-item small { font-size: 13px; }
 .preview-note { color: #705621; }
-.notification-item strong { font-size: 16px; }
-.toast { font-size: 15px; }
+.notification-item strong { font-size: 14px; }
+.toast { font-size: 14px; }
 .stat-head, .stat-note, .panel-heading p, .page-heading p,
 .data-table td, .equipment-cell small, .health-legend > div,
 .chart-summary > span, .chart-summary .chart-legend, .bar-group > span,
@@ -150,18 +150,18 @@ dialog{border:1px solid #e5eeea;border-radius:16px;padding:25px;width:min(550px,
     .sidebar { width: 280px; }
     .app-shell { margin-left: 0; }
     .page-heading h1 { font-size: 30px; }
-    .page-heading p { font-size: 15px; }
+    .page-heading p { font-size: 14px; }
     .heading-actions .button { font-size: 14px; }
     .stat-card { padding: 17px; }
-    .stat-head { font-size: 15px; }
+    .stat-head { font-size: 14px; }
     .stat-head > span:first-child { min-height: 44px; }
     .stat-value { font-size: 38px; }
-    .stat-note { font-size: 14px; }
+    .stat-note { font-size: 13px; }
     .stat-icon { width: 30px; height: 32px; }
     .stat-icon svg { width: 18px; height: 18px; }
     .breadcrumb { font-size: 13px; }
     .context-bar, .period-picker select { font-size: 12px; }
-    .panel h2, .section-heading h2 { font-size: 18px; }
+    .panel h2, .section-heading h2 { font-size: 17px; }
     .panel-heading { flex-wrap: wrap; row-gap: 10px; }
     .chart-summary .chart-legend { width: 100%; margin-left: 0; }
     .health-content { flex-direction: column; padding: 26px 20px; }

@@ -16,8 +16,7 @@
     <button class="sidebar-scrim" aria-label="Close navigation" hidden></button>
     <aside class="sidebar" id="sidebar" aria-label="Main navigation">
         <a href="#overview" class="brand"><span class="brand-icon"><svg><use href="#i-layers"/></svg></span><span>MIS<span class="brand-accent">DB</span><small>MANAGEMENT INFORMATION SYSTEM</small></span></a>
-        <div class="workspace"><span class="company-icon">L</span><div><strong>Laguna Carparts</strong><small>Manufacturing Incorporated</small></div><span class="workspace-dot"></span></div>
-        <nav class="flex flex-col gap-1">
+        <nav class="mt-8 flex flex-col gap-1">
             <p class="nav-label">WORKSPACE</p>
             <a href="#overview" class="nav-item active" data-page="overview" aria-current="page"><svg><use href="#i-grid"/></svg>Overview</a>
             <a href="#inventory" class="nav-item" data-page="inventory"><svg><use href="#i-monitor"/></svg>Computer inventory</a>
