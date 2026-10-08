@@ -1,4 +1,4 @@
-<x-layouts.app :backup-url="route('backup-monitoring.index')" :timezone="config('misdb.timezone')">
+<x-layouts.app :backup-url="route('backup-monitoring.index')" :inventory-url="route('inventory.index')" :timezone="config('misdb.timezone')">
     <x-slot:navigation>
         <a href="#overview" class="brand">
             <span class="brand-icon"><x-icon name="layers" /></span>
@@ -77,6 +77,7 @@
         <div class="heading-actions">
             <x-button variant="secondary" icon="download" data-action="export">Export report</x-button>
             <x-button variant="primary" icon="plus" data-action="new-request">New request</x-button>
+            <x-button variant="primary" icon="plus" data-action="new-equipment" hidden>Add equipment</x-button>
         </div>
     </div>
 

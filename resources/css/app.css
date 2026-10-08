@@ -190,3 +190,27 @@ dialog{border:1px solid #e5eeea;border-radius:16px;padding:25px;width:min(550px,
 @media(max-width:760px) { .backup-source { flex-direction:column; align-items:flex-start; padding:18px; } .backup-source strong { font-size:13px; } .backup-stats .stat-value { font-size:34px; } }
 
 @media(max-width:760px) { .toast { left:20px; right:20px; transform:none; width:auto; max-width:none; text-align:center; } }
+
+.inventory-dialog { width:min(780px,calc(100% - 32px)); }
+.inventory-filters { display:flex; gap:10px; }
+.inventory-table { min-width:850px; }
+.inventory-row-actions { display:flex; align-items:center; gap:7px; }
+.compact-button { display:flex; align-items:center; gap:5px; font-size:12px; color:#2f5a58; background:#fff; border:1px solid #dce7e5; border-radius:5px; padding:6px 8px; }
+.compact-button:hover { background:#edf6f3; }
+.compact-button svg { width:13px; height:13px; }
+.danger-text { color:#a33434; }
+.button-danger { background:#ac3535; color:white; }
+.button-danger:hover { background:#862727; }
+.form-error { color:#8b2929; background:#fff0ee; border:1px solid #f1d1cb; border-radius:7px; padding:12px 14px; font-size:14px; line-height:1.7; margin-bottom:18px; }
+.inventory-fields { margin-top:16px; }
+.inventory-dialog .field { min-width:0; }
+.inventory-dialog .field input, .inventory-dialog .field select, .inventory-dialog .field textarea { width:100%; min-width:0; }
+.inventory-form-section { margin-top:24px; }
+.inventory-form-section h3 { font-size:17px; font-weight:600; margin-bottom:12px; }
+.inventory-form-section .section-heading h3 { margin-bottom:0; }
+.inventory-part-row { display:grid; grid-template-columns:1fr 1fr 1.25fr 30px; gap:10px; align-items:end; margin-top:12px; }
+.inventory-part-row .icon-button { margin-bottom:4px; }
+.inventory-spec-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:13px; }
+.inventory-form-note { margin-top:19px; font-size:13px; color:#415965; line-height:1.7; }
+.inventory-toolbar input { width:290px; }
+@media(max-width:760px) { .inventory-filters { width:100%; flex-wrap:wrap; } .inventory-filters label { width:auto; } .inventory-part-row { grid-template-columns:1fr 1fr; padding:12px; border:1px solid #e0e8e5; border-radius:8px; } .inventory-part-row .field:nth-child(3) { grid-column:1/-1; } .inventory-part-row .icon-button { grid-column:2; justify-self:end; } .inventory-spec-row { grid-template-columns:1fr; border-bottom:1px solid #e8efeb; padding-bottom:14px; } .inventory-toolbar>label { width:100%; } .inventory-toolbar input { width:100%; } }

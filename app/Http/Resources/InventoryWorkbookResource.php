@@ -7,13 +7,15 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class InventoryWorkbookResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
-     */
+    public static $wrap = null;
+
+    /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
-        return parent::toArray($request);
+        return [
+            'version' => $this->resource['version'],
+            'source' => $this->resource['source'],
+            'records' => $this->resource['records'],
+        ];
     }
 }

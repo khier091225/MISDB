@@ -30,3 +30,4 @@ Thumbs.db
 /.npm-cache
 /storage/app/ui-browser
 /storage/app/ui-downloads
+/forms/*.misdb.lock

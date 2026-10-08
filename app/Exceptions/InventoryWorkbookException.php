@@ -2,13 +2,12 @@
 
 namespace App\Exceptions;
 
-class InventoryWorkbookException
+use RuntimeException;
+
+class InventoryWorkbookException extends RuntimeException
 {
-    /**
-     * Create a new class instance.
-     */
-    public function __construct()
+    public function __construct(string $message, public readonly int $status = 503)
     {
-        //
+        parent::__construct($message);
     }
 }

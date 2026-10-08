@@ -1,4 +1,4 @@
-@props(['backupUrl', 'timezone' => 'Asia/Manila', 'title' => 'MISDB · Overview'])
+@props(['backupUrl', 'inventoryUrl', 'timezone' => 'Asia/Manila', 'title' => 'MISDB · Overview'])
 
 <!DOCTYPE html>
 <html lang="en">
@@ -6,6 +6,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#087f72">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="description" content="MISDB — equipment inventory, service requests, and maintenance monitoring for Laguna Carparts Manufacturing Inc.">
     <title>{{ $title }}</title>
     <link rel="icon" type="image/svg+xml" href="{{ asset('misdb.svg') }}">
@@ -13,7 +14,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @stack('styles')
 </head>
-<body {{ $attributes->merge(['data-backup-url' => $backupUrl, 'data-timezone' => $timezone]) }}>
+<body {{ $attributes->merge(['data-backup-url' => $backupUrl, 'data-inventory-url' => $inventoryUrl, 'data-timezone' => $timezone]) }}>
     @include('partials.icons')
 
     <a class="skip-link" href="#main-content">Skip to content</a>

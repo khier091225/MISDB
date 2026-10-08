@@ -2,28 +2,18 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class DeleteInventoryRequest extends FormRequest
 {
-    /**
-     * Determine if the user is authorized to make this request.
-     */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
-    /**
-     * Get the validation rules that apply to the request.
-     *
-     * @return array<string, ValidationRule|array<mixed>|string>
-     */
+    /** @return array<string, list<string>> */
     public function rules(): array
     {
-        return [
-            //
-        ];
+        return ['version' => ['required', 'string', 'regex:/^[a-f0-9]{64}$/']];
     }
 }
