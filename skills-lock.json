@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "laravel:blade-components-and-layouts": {
+      "source": "jpcaparas/superpowers-laravel",
+      "sourceType": "github",
+      "skillPath": "skills/blade-components-and-layouts/SKILL.md",
+      "computedHash": "5424f83446f70d30bd59322a974bb1667e8078789cc6ff0dae3b52cdb5150295"
+    }
+  }
+}

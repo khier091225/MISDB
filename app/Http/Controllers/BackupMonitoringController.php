@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\BackupWorkbookResource;
 use App\Services\BackupWorkbook;
 use Illuminate\Http\JsonResponse;
 use RuntimeException;
@@ -11,7 +12,9 @@ class BackupMonitoringController extends Controller
     public function index(BackupWorkbook $workbook): JsonResponse
     {
         try {
-            return response()->json($workbook->read())->header('Cache-Control', 'no-store');
+            return (new BackupWorkbookResource($workbook->read()))
+                ->response()
+                ->header('Cache-Control', 'no-store');
         } catch (RuntimeException $exception) {
             report($exception);
 

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\BackupStatus;
 use DateTimeImmutable;
 use RuntimeException;
 use SimpleXMLElement;
@@ -9,16 +10,17 @@ use ZipArchive;
 
 class BackupWorkbook
 {
-    public const FILE = 'F-MIS-06 Monthly Back-up Monitoring Sheet(1).xlsx';
-
-    public function __construct(private ?string $path = null) {}
+    public function __construct(private readonly ?string $path = null) {}
 
     /**
      * @return array{source: array{file: string, modified_at: string, checked_at: string}, years: list<int>, default_period: string, records: list<array{id: string, number: string, code: string, user: string, year: int, sheet: string, row: int, months: array<string, array{cell: string, value: string, display: string, status: string}>}>}
      */
     public function read(): array
     {
-        $path = $this->path ?? base_path('forms/'.self::FILE);
+        $path = $this->path ?? config('misdb.backup_workbook');
+        if (! is_string($path) || $path === '') {
+            throw new RuntimeException('The backup monitoring workbook path is not configured.');
+        }
         clearstatcache(true, $path);
 
         if (! is_file($path) || ! is_readable($path)) {
@@ -45,7 +47,7 @@ class BackupWorkbook
                 }
             }
             $dateStyles = $this->dateStyles($zip);
-            $date1904 = (string) $workbook->workbookPr['date1904'] === '1';
+            $date1904 = in_array((string) $workbook->workbookPr['date1904'], ['1', 'true'], true);
             $records = [];
             $years = [];
             foreach ($workbook->sheets->sheet as $sheet) {
@@ -73,7 +75,8 @@ class BackupWorkbook
                         $cell = $cells[$column] ?? ['value' => '', 'style' => 0, 'type' => ''];
                         $value = trim($cell['value']);
                         $display = $value;
-                        $isDate = isset($dateStyles[$cell['style']]) && is_numeric($value) && (float) $value >= 1 && (float) $value < 100000;
+                        $isNumericCell = in_array($cell['type'], ['', 'n'], true);
+                        $isDate = $isNumericCell && isset($dateStyles[$cell['style']]) && is_numeric($value) && (float) $value >= 1 && (float) $value < 100000;
                         if ($isDate) {
                             $epoch = new DateTimeImmutable($date1904 ? '1904-01-01' : '1899-12-30');
                             $display = $epoch->modify('+'.(int) floor((float) $value).' days')->format('Y-m-d');
@@ -82,7 +85,7 @@ class BackupWorkbook
                             'cell' => $column.$rowNumber,
                             'value' => $value,
                             'display' => $display,
-                            'status' => $this->status($value, $cell['type'], $isDate),
+                            'status' => $this->status($value, $cell['type'], $isDate)->value,
                         ];
                     }
                     $records[] = [
@@ -103,12 +106,12 @@ class BackupWorkbook
             }
             $years = array_values(array_unique($years));
             rsort($years);
-            $current = now('Asia/Manila');
+            $current = now(config('misdb.timezone'));
             $year = in_array((int) $current->format('Y'), $years, true) ? (int) $current->format('Y') : $years[0];
 
             return [
                 'source' => [
-                    'file' => self::FILE,
+                    'file' => basename($path),
                     'modified_at' => gmdate(DATE_ATOM, (int) filemtime($path)),
                     'checked_at' => $current->toIso8601String(),
                 ],
@@ -219,11 +222,11 @@ class BackupWorkbook
         }
         $styles = [];
         $styleIndex = -1;
-        foreach ($xml->cellXfs->xf as $style) {
+        foreach ($xml->cellXfs->xf ?? [] as $style) {
             $styleIndex++;
             $format = (int) $style['numFmtId'];
             $code = preg_replace('/"[^"]*"|\[[^\]]*\]|\\\\./', '', $formats[$format] ?? '');
-            if (($format >= 14 && $format <= 22) || preg_match('/[ymd]/i', $code)) {
+            if (in_array($format, [14, 15, 16, 17, 22], true) || preg_match('/[yd]/i', $code)) {
                 $styles[$styleIndex] = true;
             }
         }
@@ -231,28 +234,28 @@ class BackupWorkbook
         return $styles;
     }
 
-    private function status(string $value, string $type, bool $isDate): string
+    private function status(string $value, string $type, bool $isDate): BackupStatus
     {
         if ($value === '') {
-            return 'Not recorded';
+            return BackupStatus::NotRecorded;
         }
         if ($isDate || ($type === 'b' && $value === '1')) {
-            return 'Completed';
+            return BackupStatus::Completed;
         }
         $normalized = mb_strtolower(trim($value));
         if (in_array($normalized, ['✓', '✔', '√', 'done', 'complete', 'completed', 'yes', 'ok', 'backed up'], true)) {
-            return 'Completed';
+            return BackupStatus::Completed;
         }
         if (($type === 'b' && $value === '0') || in_array($normalized, ['pending', 'not completed', 'no'], true)) {
-            return 'Pending';
+            return BackupStatus::Pending;
         }
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
             $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
             if ($date && $date->format('Y-m-d') === $value) {
-                return 'Completed';
+                return BackupStatus::Completed;
             }
         }
 
-        return 'Recorded';
+        return BackupStatus::Recorded;
     }
 }

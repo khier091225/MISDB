@@ -64,4 +64,33 @@ class BackupMonitoringTest extends TestCase
     {
         $this->get('/')->assertSee('data-backup-url="'.route('backup-monitoring.index').'"', false);
     }
+
+    public function test_reads_the_configured_workbook_without_disclosing_its_absolute_path(): void
+    {
+        $path = BackupWorkbookFixture::create(['M5' => ['value' => 'Completed']]);
+        $this->files[] = $path;
+        config(['misdb.backup_workbook' => $path]);
+
+        $response = $this->getJson(route('backup-monitoring.index'));
+
+        $response->assertJsonPath('source.file', basename($path))
+            ->assertJsonPath('records.0.months.2026-10.status', 'Completed');
+        $this->assertSame(['source', 'years', 'default_period', 'records'], array_keys($response->json()));
+        $this->assertStringNotContainsString($path, $response->getContent());
+    }
+
+    public function test_returns_503_when_the_workbook_path_is_not_configured(): void
+    {
+        config(['misdb.backup_workbook' => '']);
+
+        $this->getJson(route('backup-monitoring.index'))
+            ->assertStatus(503);
+    }
+
+    public function test_passes_the_configured_timezone_to_the_dashboard(): void
+    {
+        config(['misdb.timezone' => 'UTC']);
+
+        $this->get('/')->assertSee('data-timezone="UTC"', false);
+    }
 }

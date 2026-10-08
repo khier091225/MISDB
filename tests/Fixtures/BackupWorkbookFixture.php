@@ -7,15 +7,16 @@ use ZipArchive;
 class BackupWorkbookFixture
 {
     /** @param array<string, array{value: string, type?: string, style?: int}> $entries */
-    public static function create(array $entries = []): string
+    public static function create(array $entries = [], ?string $date1904 = null): string
     {
         $path = tempnam(sys_get_temp_dir(), 'misdb-backup-');
         $zip = new ZipArchive;
         $zip->open($path, ZipArchive::OVERWRITE);
-        $zip->addFromString('xl/workbook.xml', '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><workbookPr/><sheets><sheet name="F-MIS-06 Rev. 0" sheetId="1" r:id="rId1"/><sheet name="2026" sheetId="2" r:id="rId2"/></sheets></workbook>');
+        $properties = $date1904 === null ? '<workbookPr/>' : '<workbookPr date1904="'.htmlspecialchars($date1904, ENT_XML1 | ENT_QUOTES, 'UTF-8').'"/>';
+        $zip->addFromString('xl/workbook.xml', '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'.$properties.'<sheets><sheet name="F-MIS-06 Rev. 0" sheetId="1" r:id="rId1"/><sheet name="2026" sheetId="2" r:id="rId2"/></sheets></workbook>');
         $zip->addFromString('xl/_rels/workbook.xml.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Target="worksheets/sheet2.xml"/></Relationships>');
-        $zip->addFromString('xl/sharedStrings.xml', '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><t>SERVER</t></si><si><r><t>K. </t></r><r><t>DIXON</t></r></si></sst>');
-        $zip->addFromString('xl/styles.xml', '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/></numFmts><cellXfs count="3"><xf numFmtId="0"/><xf numFmtId="14"/><xf numFmtId="164"/></cellXfs></styleSheet>');
+        $zip->addFromString('xl/sharedStrings.xml', '<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><si><t>SERVER</t></si><si><r><t>K. </t></r><r><t>DIXON</t></r></si><si><t>46024</t></si></sst>');
+        $zip->addFromString('xl/styles.xml', '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="2"><numFmt numFmtId="164" formatCode="dd/mm/yyyy"/><numFmt numFmtId="165" formatCode="mm:ss"/></numFmts><cellXfs count="5"><xf numFmtId="0"/><xf numFmtId="14"/><xf numFmtId="164"/><xf numFmtId="18"/><xf numFmtId="165"/></cellXfs></styleSheet>');
         $zip->addFromString('xl/worksheets/sheet1.xml', self::worksheet('Old User', [], 'OUTDATED-PC'));
         $zip->addFromString('xl/worksheets/sheet2.xml', self::worksheet('Current User', $entries));
         $zip->close();

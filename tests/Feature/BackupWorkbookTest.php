@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Services\BackupWorkbook;
+use PHPUnit\Framework\Attributes\TestWith;
 use RuntimeException;
 use Tests\Fixtures\BackupWorkbookFixture;
 use Tests\TestCase;
@@ -99,6 +100,63 @@ class BackupWorkbookTest extends TestCase
 
         $this->assertSame('Updated User', $result['records'][1]['user']);
         $this->assertSame('Completed', $result['records'][0]['months']['2026-10']['status']);
+    }
+
+    public function test_date_formatted_text_and_error_cells_are_not_confirmed_as_backups(): void
+    {
+        $path = $this->fixture([
+            'D5' => ['value' => '46023', 'style' => 1],
+            'E5' => ['value' => '2', 'type' => 's', 'style' => 1],
+            'F5' => ['value' => '46025', 'type' => 'e', 'style' => 1],
+        ]);
+
+        $months = (new BackupWorkbook($path))->read()['records'][0]['months'];
+
+        $this->assertSame('46023', $months['2026-01']['display']);
+        $this->assertSame('Recorded', $months['2026-01']['status']);
+        $this->assertSame('46024', $months['2026-02']['display']);
+        $this->assertSame('Recorded', $months['2026-02']['status']);
+        $this->assertSame('Recorded', $months['2026-03']['status']);
+    }
+
+    #[TestWith(['1'])]
+    #[TestWith(['true'])]
+    public function test_recognizes_both_supported_1904_date_system_flags(string $flag): void
+    {
+        $path = BackupWorkbookFixture::create(['D5' => ['value' => '44561', 'type' => 'n', 'style' => 1]], $flag);
+        $this->files[] = $path;
+
+        $entry = (new BackupWorkbook($path))->read()['records'][0]['months']['2026-01'];
+
+        $this->assertSame('2026-01-01', $entry['display']);
+        $this->assertSame('Completed', $entry['status']);
+    }
+
+    public function test_time_only_formats_are_not_confirmed_as_backup_dates(): void
+    {
+        $path = $this->fixture([
+            'D5' => ['value' => '46023', 'type' => 'n', 'style' => 3],
+            'E5' => ['value' => '46024', 'type' => 'n', 'style' => 4],
+        ]);
+
+        $months = (new BackupWorkbook($path))->read()['records'][0]['months'];
+
+        $this->assertSame('46023', $months['2026-01']['display']);
+        $this->assertSame('Recorded', $months['2026-01']['status']);
+        $this->assertSame('46024', $months['2026-02']['display']);
+        $this->assertSame('Recorded', $months['2026-02']['status']);
+    }
+
+    public function test_uses_the_configured_timezone_for_the_reporting_month(): void
+    {
+        $path = $this->fixture();
+        config(['misdb.timezone' => 'Asia/Manila']);
+        $this->travelTo(new \DateTimeImmutable('2026-09-30 20:00:00 UTC'));
+
+        $result = (new BackupWorkbook($path))->read();
+
+        $this->assertSame('2026-10', $result['default_period']);
+        $this->assertSame('2026-10-01T04:00:00+08:00', $result['source']['checked_at']);
     }
 
     public function test_rejects_workbooks_with_missing_month_headers(): void
