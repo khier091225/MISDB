@@ -251,6 +251,7 @@ document.addEventListener('click',event => {
     if(action==='remove-inventory-part'){const rows=$('[data-component-row]');if(rows.length>1)event.target.closest('[data-component-row]').remove();else toast('Keep at least one part.');}
     if(action==='export')exportReport();
     if(action==='refresh-backups')refreshBackups(true);
+    if(action==='mark-backup-completed') { const btn = event.target.closest('[data-action]'); updateBackupStatus(btn.dataset.recordCode, btn.dataset.recordPeriod, 'Completed', btn); }
     if(action==='download-csv')downloadCsv();
     if(action==='previous-page'){state.pageNumber--;renderModuleRows();}
     if(action==='next-page'){state.pageNumber++;renderModuleRows();}
@@ -353,12 +354,41 @@ function renderBackupRows() {
     $('[data-action="previous-page"]').disabled=state.pageNumber===1;
     $('[data-action="next-page"]').disabled=state.pageNumber===pages;
 }
+async function updateBackupStatus(code, period, status, button) {
+    if(button.disabled)return;
+    button.disabled=true;
+    try {
+        const response = await fetch(document.body.dataset.backupUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({code, period, status})
+        });
+        if (!response.ok) throw new Error((await response.json()).message || 'Failed to update backup status.');
+        dialog.close();
+        await refreshBackups();
+        toast('Backup marked as ' + status + '.');
+    } catch (e) {
+        toast(e.message);
+        button.disabled=false;
+    }
+}
+
 function showBackupDetails(id) {
     const record=backupWorkbook.data?.records.find(row=>row.id===id);
     if(!record)return;
     const entry=record.months[state.backupPeriod];
     const history=Object.entries(record.months).map(([period,value])=>'<tr><td>'+monthName(period)+'</td><td>'+escape(value.display||'—')+'</td><td>'+badge(value.status)+'</td></tr>').join('');
-    showDialog(record.code+' · Backup record','<p class="dialog-description">F-MIS-06 · '+monthName(state.backupPeriod)+'</p>'+badge(entry.status)+'<dl class="detail-grid">'+details({'Assigned user':record.user||'Not specified','Computer code':record.code,'Source sheet':record.sheet,'Source cell':entry.cell,'Excel entry':entry.display||'Blank / not recorded','Last read':new Intl.DateTimeFormat('en',{dateStyle:'medium',timeStyle:'short',timeZone:workspaceTimezone}).format(new Date(backupWorkbook.data.source.checked_at))+' '+workspaceTimezoneLabel})+'</dl><h3 class="backup-history-title">Monthly entries · '+record.year+'</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Month</th><th>Excel entry</th><th>Status</th></tr></thead><tbody>'+history+'</tbody></table></div><p class="dialog-description backup-detail-note">Edit and save the Excel workbook, then use Refresh Excel to load the latest entries.</p>');
+    
+    let actions = '';
+    if (entry.status !== 'Completed') {
+        actions = '<div class="dialog-actions"><button class="button button-primary" data-action="mark-backup-completed" data-record-code="'+escape(record.code)+'" data-record-period="'+escape(state.backupPeriod)+'">'+icon('check')+'Mark as Completed</button></div>';
+    }
+    
+    showDialog(record.code+' · Backup record','<p class="dialog-description">F-MIS-06 · '+monthName(state.backupPeriod)+'</p>'+badge(entry.status)+'<dl class="detail-grid">'+details({'Assigned user':record.user||'Not specified','Computer code':record.code,'Source sheet':record.sheet,'Source cell':entry.cell,'Excel entry':entry.display||'Blank / not recorded','Last read':new Intl.DateTimeFormat('en',{dateStyle:'medium',timeStyle:'short',timeZone:workspaceTimezone}).format(new Date(backupWorkbook.data.source.checked_at))+' '+workspaceTimezoneLabel})+'</dl><h3 class="backup-history-title">Monthly entries · '+record.year+'</h3><div class="table-scroll"><table class="data-table"><thead><tr><th>Month</th><th>Excel entry</th><th>Status</th></tr></thead><tbody>'+history+'</tbody></table></div><p class="dialog-description backup-detail-note">Edits via the Mark as Completed button will override the Excel workbook status directly in the database.</p>' + actions);
 }
 refreshBackups();
 

@@ -8,6 +8,8 @@ use Tests\TestCase;
 
 class BackupMonitoringTest extends TestCase
 {
+    use \Illuminate\Foundation\Testing\RefreshDatabase;
+
     /** @var list<string> */
     private array $files = [];
 
@@ -92,5 +94,20 @@ class BackupMonitoringTest extends TestCase
         config(['misdb.timezone' => 'UTC']);
 
         $this->get('/')->assertSee('data-timezone="UTC"', false);
+    }
+
+    public function test_can_save_backup_status_to_database(): void
+    {
+        $this->postJson(route('backup-monitoring.store'), [
+            'code' => 'PC-01',
+            'period' => '2026-10',
+            'status' => 'Completed',
+        ])->assertOk()->assertJson(['message' => 'Backup status updated successfully.']);
+
+        $this->assertDatabaseHas('backup_records', [
+            'code' => 'PC-01',
+            'period' => '2026-10',
+            'status' => 'Completed',
+        ]);
     }
 }

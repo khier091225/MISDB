@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\BackupStatus;
+use App\Models\BackupRecord;
 use DateTimeImmutable;
 use RuntimeException;
 use SimpleXMLElement;
@@ -108,6 +109,19 @@ class BackupWorkbook
             rsort($years);
             $current = now(config('misdb.timezone'));
             $year = in_array((int) $current->format('Y'), $years, true) ? (int) $current->format('Y') : $years[0];
+
+            $dbRecords = BackupRecord::all()->groupBy('code');
+
+            foreach ($records as &$record) {
+                if (! isset($dbRecords[$record['code']])) {
+                    continue;
+                }
+                foreach ($dbRecords[$record['code']] as $dbRecord) {
+                    if (isset($record['months'][$dbRecord->period])) {
+                        $record['months'][$dbRecord->period]['status'] = $dbRecord->status;
+                    }
+                }
+            }
 
             return [
                 'source' => [
@@ -243,7 +257,7 @@ class BackupWorkbook
             return BackupStatus::Completed;
         }
         $normalized = mb_strtolower(trim($value));
-        if (in_array($normalized, ['✓', '✔', '√', 'done', 'complete', 'completed', 'yes', 'ok', 'backed up'], true)) {
+        if (in_array($normalized, ['✓', '✔', '√', 'done', 'complete', 'completed', 'yes', 'ok', 'backed up', 'v', '/', 'y', 'c', 'x'], true)) {
             return BackupStatus::Completed;
         }
         if (($type === 'b' && $value === '0') || in_array($normalized, ['pending', 'not completed', 'no'], true)) {

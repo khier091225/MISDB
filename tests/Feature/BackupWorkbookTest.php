@@ -11,6 +11,8 @@ use ZipArchive;
 
 class BackupWorkbookTest extends TestCase
 {
+    use \Illuminate\Foundation\Testing\RefreshDatabase;
+
     /** @var list<string> */
     private array $files = [];
 
@@ -42,7 +44,7 @@ class BackupWorkbookTest extends TestCase
 
     public function test_blank_cells_are_not_recorded_and_original_entries_are_preserved(): void
     {
-        $path = $this->fixture(['E5' => ['value' => 'Review this entry'], 'F5' => ['value' => 'x'], 'G5' => ['value' => '0', 'type' => 'n']]);
+        $path = $this->fixture(['E5' => ['value' => 'Review this entry'], 'F5' => ['value' => 'wip'], 'G5' => ['value' => '0', 'type' => 'n']]);
 
         $months = (new BackupWorkbook($path))->read()['records'][0]['months'];
 
@@ -71,6 +73,23 @@ class BackupWorkbookTest extends TestCase
         $this->assertSame('Pending', $months['2026-06']['status']);
         $this->assertSame('Completed', $months['2026-07']['status']);
         $this->assertSame('Recorded', $months['2026-08']['status']);
+    }
+
+    public function test_single_character_shortcuts_have_completed_status(): void
+    {
+        $path = $this->fixture([
+            'D5' => ['value' => 'x'], 'E5' => ['value' => 'v'], 'F5' => ['value' => '/'],
+            'G5' => ['value' => 'y'], 'H5' => ['value' => 'c'], 'I5' => ['value' => 'X'],
+        ]);
+
+        $months = (new BackupWorkbook($path))->read()['records'][0]['months'];
+
+        $this->assertSame('Completed', $months['2026-01']['status']);
+        $this->assertSame('Completed', $months['2026-02']['status']);
+        $this->assertSame('Completed', $months['2026-03']['status']);
+        $this->assertSame('Completed', $months['2026-04']['status']);
+        $this->assertSame('Completed', $months['2026-05']['status']);
+        $this->assertSame('Completed', $months['2026-06']['status']);
     }
 
     public function test_formats_numeric_excel_dates_with_builtin_and_custom_date_styles(): void
